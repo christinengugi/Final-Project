@@ -8,9 +8,11 @@ public class App {
             { 0, 0, 0, 2, 0, 6 },
             { 0, 0, 0, 0, 6, 0 },
         };
-        int[] parent = Algorithms.dijkstra(g, 0);
-        for (int i = 0; i < parent.length; i++) {
-            System.out.println(parent[i]);
-        }
+        Object[] res = Algorithms.dijkstra(g, 0);
+        int[] dist = (int[]) res[0];
+        int[] parent = (int[]) res[1];
+        int med = Algorithms.getMedianVertex(0, 5, dist, parent);
+        System.out.println(med);
+        
     }
 }

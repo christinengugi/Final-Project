@@ -1,6 +1,5 @@
 import java.util.PriorityQueue;
 import java.util.Comparator;
-import java.util.Map;
 
 /**
  * Algorithms Class
@@ -11,9 +10,9 @@ public class Algorithms {
      * Dijkstra's algorithm
      * @param adjm the input adjacency matrix
      * @param s the input source vertex
-     * @return a parent pointer array
+     * @return the distance and parent pointer arrays
      */
-    public static int[] dijkstra(int[][] adjm, int s) {
+    public static Object[] dijkstra(int[][] adjm, int s) {
         // Create distance and parent pointer arrays
         int[] dist = new int[adjm.length];
         int[] parent = new int[adjm.length];
@@ -47,7 +46,38 @@ public class Algorithms {
 
             }
         }
-        return parent;
+        return new Object[] { dist, parent };
+    }
+
+    /**
+     * Gets the median vertex on the shortest path from s to t based on edge weights
+     * @param s the source vertex
+     * @param t the target vertex
+     * @param dist the distance array
+     * @param parent the parent pointers array
+     * @return the index of the median vertex
+     */
+    public static int getMedianVertex(int s, int t, int[] dist, int[] parent) {
+        
+        // Calculate middle distance value
+        double midDist = dist[t] / 2.0;
+
+        double minDiff = Double.MAX_VALUE;
+        int med = -1;
+        
+        // Iterate through shortest path from s to t
+        int curr = t;
+        while (curr != s) {
+            // Find the vertex with distance from s closest to the middle distance value
+            double diff = Math.abs(dist[curr] - midDist);
+            if (diff < minDiff) {
+                minDiff = diff;
+                med = curr;
+            }
+            curr = parent[curr];
+        }
+        
+        return med;
     }
 
 }
