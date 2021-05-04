@@ -1,9 +1,5 @@
 import java.util.PriorityQueue;
 import java.util.Comparator;
-<<<<<<< HEAD
-=======
-import java.util.Map;
->>>>>>> e36e63bd8e910f6847a119958b4366b962e4995a
 
 /**
  * Algorithms Class
@@ -14,15 +10,9 @@ public class Algorithms {
      * Dijkstra's algorithm
      * @param adjm the input adjacency matrix
      * @param s the input source vertex
-<<<<<<< HEAD
      * @return the distance and parent pointer arrays
      */
     public static Object[] dijkstra(int[][] adjm, int s) {
-=======
-     * @return a parent pointer array
-     */
-    public static int[] dijkstra(int[][] adjm, int s) {
->>>>>>> e36e63bd8e910f6847a119958b4366b962e4995a
         // Create distance and parent pointer arrays
         int[] dist = new int[adjm.length];
         int[] parent = new int[adjm.length];
@@ -39,7 +29,6 @@ public class Algorithms {
             parent[i] = -1;
             q.offer(i);
         }
-<<<<<<< HEAD
 
         while (!q.isEmpty()) {
             // Extract min distance value vertex
@@ -91,26 +80,4 @@ public class Algorithms {
         return med;
     }
 
-=======
-
-        while (!q.isEmpty()) {
-            // Extract min distance value vertex
-            int u = q.poll();
-            for (int v = 0; v < adjm.length; v++) {
-
-                // Edge relaxation
-                if (adjm[u][v] != 0 && dist[v] > dist[u] + adjm[u][v]) {
-                    dist[v] = dist[u] + adjm[u][v];
-                    parent[v] = u;
-                    // Reinsert vertex into priority queue (Java's implementation does not dynamically update order)
-                    q.remove(v);
-                    q.offer(v);
-                }
-
-            }
-        }
-        return parent;
-    }
-
->>>>>>> e36e63bd8e910f6847a119958b4366b962e4995a
 }
