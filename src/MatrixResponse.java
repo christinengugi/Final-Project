@@ -38,6 +38,10 @@ public class MatrixResponse {
         return rows;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
 
     public int[][] getData() {
         int[][] res = new int[rows.size()][rows.size()];

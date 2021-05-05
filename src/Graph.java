@@ -1,51 +1,90 @@
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
 import com.google.gson.Gson;
-
-import MatrixResponse.Element;
+import java.util.PriorityQueue;
+import java.util.Comparator;
 
 public class Graph {
 
     private static final String API_KEY = "AIzaSyDbGKLgDehhTw5e74VYe3jvACTBS9GdrVI";
 
+    // Maps vertex indices to Cafe objects
     private Map<Integer, Cafe> vertexMap;
+
+    // Adjacency matrix representation
     private int[][] adjm;
 
-    public Graph(Coordinate loc1, Coordinate loc2) {
-        // Compute distance and midpoint b/w loc1 and loc2
-        int distance = getDistance(loc1, loc2);
-        
-        // Get cafes within radius (distance/2) of midpoint
-        Coordinate mid = Coordinate.mid(loc1, loc2);
-        int radius = distance / 2;
-        // Map vertex indices to object containing more info (i.e address, coordinates, ...etc.)
-        vertexMap = new HashMap<>();
-        getCafes(mid, radius);
-         
-        // Let V = set of cafes and loc1, loc2
-        if (vertexMap.size() > 0) {
-            getDistances();
-        }
-        
+    private Coordinate loc1;
+    private Coordinate loc2;
 
-        // Let E = edge iff distance b/w vertices is < some constant
+    public Graph(Coordinate loc1, Coordinate loc2) {
+        this.loc1 = loc1;
+        this.loc2 = loc2;
+
+        // Compute distance and midpoint between loc1 and loc2
+        int distance = getDistance(loc1, loc2);
+        Coordinate mid = Coordinate.mid(loc1, loc2);
+
+        // Get nearby cafes
+        int radius = distance / 2;
+        this.vertexMap = getCafes(mid, radius);
+         
+        // Get distances between cafes and create adjacency matrix 
+        this.adjm = new int[vertexMap.size() + 2][vertexMap.size() + 2];
+        if (vertexMap.size() > 0) {
+            for (int i = 0; i < adjm.length; i++) {
+                for (int j = 0; j < adjm[0].length; j++) {
+                    if (i == j) {
+                        // no weight to same vertex
+                        adjm[i][j] = 0;
+                    } else if (adjm[i][j] == 0 && adjm[j][i] == 0) {
+
+                        Coordinate locI;
+                        if (i <= 1) {
+                            locI = loc1;
+                        } else {
+                            Cafe cafeI = vertexMap.get(i);
+                            locI = new Coordinate(cafeI.getGeometry().getLocation().getLat(), cafeI.getGeometry().getLocation().getLng());
+                        }
+
+                        Coordinate locJ;
+                        if (j <= 1) {
+                            locJ = loc2;
+                        } else {
+                            Cafe cafeJ = vertexMap.get(j);
+                            locJ = new Coordinate(cafeJ.getGeometry().getLocation().getLat(), cafeJ.getGeometry().getLocation().getLng());
+                        }
+
+                        // distance between cafes
+                        int distanceIJ = getDistance(locI, locJ);
+                        distanceIJ = (distanceIJ < 2000) ? distanceIJ : 0; // filter
+                        adjm[i][j] = distanceIJ;
+                        adjm[j][i] = distanceIJ;
+                    }
+                }
+            }
+        }
     }
 
+    /**
+     * Gets the distance between two locations based on Google Maps API
+     * @param loc1 the input location 1
+     * @param loc2 the input location 2
+     * @return distance between input locations, -1 if API call failed
+     */
     private int getDistance(Coordinate loc1, Coordinate loc2) {
-        String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric";
-        apiCall += "&origins=" + loc1.getLat() + "," + loc1.getLng();
-        apiCall += "&destinations=" + loc2.getLat() + "," + loc2.getLng();
-        apiCall += "&key=" + API_KEY;
+        String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric" +
+            "&origins=" + loc1.getLat() + "," + loc1.getLng() +
+            "&destinations=" + loc2.getLat() + "," + loc2.getLng() +
+            "&key=" + API_KEY;
+
         try {
             URL url = new URL(apiCall);
             URLConnection connection = url.openConnection();
@@ -73,7 +112,7 @@ public class Graph {
         return -1;
     }
 
-    private void getDistances() {
+    private int[][] getDistances() {
         String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric";
         
         // construct apicall string
@@ -82,9 +121,13 @@ public class Graph {
             Cafe c = e.getValue();
             locs.append(c.getGeometry().getLocation().getLat() + "," + c.getGeometry().getLocation().getLng() + "|");
         }
-        String locsString = locs.toString().substring(0, locs.length() - 1);
+        String locsString = loc1.getLat() + "," + loc1.getLng() + "|" + 
+            loc2.getLat() + "," + loc2.getLng() + "|" +
+            locs.toString().substring(0, locs.length() - 1);
        
         apiCall += "&origins=" + locsString + "&destinations=" + locsString + "&key=" + API_KEY;
+
+        int[][] res = new int[vertexMap.size()][vertexMap.size()];
 
         // connect to url
         try {
@@ -105,30 +148,15 @@ public class Graph {
                 // Map json to Java object
                 Gson gson = new Gson();
                 MatrixResponse response = gson.fromJson(sb.toString(), MatrixResponse.class);
-
-                int[][] res = response.getData();
-                
-                for (int i = 0; i < res.length; i++) {
-                    for (int j = 0; j < res[0].length; j++) {
-                        // filtering
-                        System.out.println(res[i][j]);
-                    }
-                }
-
-                // populate edges
-                adjm = res;
-
-
-
+                res = response.getData();
+                System.out.println(response.getStatus());;
                 
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
         
-       
+       return res;
     }
     
     /**
@@ -136,7 +164,9 @@ public class Graph {
      * @param loc the input location 
      * @param radius the input radius
      */
-    private void getCafes(Coordinate loc, int radius) {
+    private Map<Integer, Cafe> getCafes(Coordinate loc, int radius) {
+        Map<Integer, Cafe> res = new HashMap<>();
+
         try {
             // Cafes API call
             URL url = new URL(
@@ -165,13 +195,100 @@ public class Graph {
                 // Map vertex indices to cafes
                 int offset = 2; // user input of 2 locations
                 for (int i = 0; i < cafes.size(); i++) {
-                    vertexMap.put(i + offset, cafes.get(i));
+                    res.put(i + offset, cafes.get(i));
                 }
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        return res;
     } 
+
+     /**
+     * Dijkstra's algorithm
+     * @param s the input source vertex
+     * @return the distance and parent pointer arrays
+     */
+    private Object[] dijkstra(int s) {
+        // Create distance and parent pointer arrays
+        int[] dist = new int[adjm.length];
+        int[] parent = new int[adjm.length];
+
+        // Create a priority queue of vertices keyed on their distance values
+        Comparator<Integer> vertexDistComparator = (v1, v2) -> {
+            return dist[v1] - dist[v2];
+        };
+        PriorityQueue<Integer> q = new PriorityQueue<>(vertexDistComparator);
+
+        // Initialize data structures
+        for (int i = 0; i < adjm.length; i++) {
+            dist[i] = (i == s) ? 0 : Integer.MAX_VALUE;
+            parent[i] = -1;
+            q.offer(i);
+        }
+
+        while (!q.isEmpty()) {
+            // Extract min distance value vertex
+            int u = q.poll();
+            for (int v = 0; v < adjm.length; v++) {
+
+                // Edge relaxation
+                if (adjm[u][v] != 0 && dist[v] > dist[u] + adjm[u][v]) {
+                    dist[v] = dist[u] + adjm[u][v];
+                    parent[v] = u;
+                    // Reinsert vertex into priority queue (Java's implementation does not dynamically update order)
+                    q.remove(v);
+                    q.offer(v);
+                }
+
+            }
+        }
+        return new Object[] { dist, parent };
+    }
+
+    /**
+     * Gets the median vertex on the shortest path from s to t based on edge weights
+     * @param s the source vertex
+     * @param t the target vertex
+     * @param dist the distance array
+     * @param parent the parent pointers array
+     * @return the index of the median vertex
+     */
+    private int getMedianVertex(int s, int t, int[] dist, int[] parent) {
+        
+        // Calculate middle distance value
+        double midDist = dist[t] / 2.0;
+
+        double minDiff = Double.MAX_VALUE;
+        int med = -1;
+        
+        // Iterate through shortest path from s to t
+        int curr = t;
+        while (curr != s) {
+            // Find the vertex with distance from s closest to the middle distance value
+            double diff = Math.abs(dist[curr] - midDist);
+            if (diff < minDiff) {
+                minDiff = diff;
+                med = curr;
+            }
+            curr = parent[curr];
+        }
+        
+        return med;
+    }
+
+    /**
+     * 
+     * @return Gets the nearest cafe to both input locations
+     */
+    public Cafe getNearestCafe() {  
+        Object[] res = dijkstra(0);
+        int[] dist = (int[]) res[0];
+        int[] parent = (int[]) res[1];
+        int med = getMedianVertex(0, 1, dist, parent);
+        return vertexMap.get(med);
+    }
 
 }
