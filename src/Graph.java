@@ -47,15 +47,20 @@ public class Graph {
                     } else if (adjm[i][j] == 0 && adjm[j][i] == 0) {
 
                         Coordinate locI;
-                        if (i <= 1) {
+                        Coordinate locJ;
+
+                        if (i == 0) {
                             locI = loc1;
+                        } else if (i == 1) {
+                            locI = loc2;
                         } else {
                             Cafe cafeI = vertexMap.get(i);
                             locI = new Coordinate(cafeI.getGeometry().getLocation().getLat(), cafeI.getGeometry().getLocation().getLng());
                         }
 
-                        Coordinate locJ;
-                        if (j <= 1) {
+                        if (j == 0) {
+                            locJ = loc1;
+                        } else if (j == 1) {
                             locJ = loc2;
                         } else {
                             Cafe cafeJ = vertexMap.get(j);
@@ -64,11 +69,30 @@ public class Graph {
 
                         // distance between cafes
                         int distanceIJ = getDistance(locI, locJ);
-                        distanceIJ = (distanceIJ < 2000) ? distanceIJ : 0; // filter
                         adjm[i][j] = distanceIJ;
                         adjm[j][i] = distanceIJ;
                     }
                 }
+            }
+
+            // Filter
+            for (int i = 0; i < adjm.length; i++) {
+                for (int j = 0; j < adjm[0].length; j++) {
+                    int distanceIJ = adjm[i][j];
+                    if (distanceIJ >= radius) {
+                        adjm[i][j] = 0;
+                    }
+                }
+            }
+
+            // print for debugging
+            for (int i = 0; i < adjm.length; i++) {
+                String row = "";
+                for (int j = 0; j < adjm[0].length; j++) {
+                    row += adjm[i][j] + ",";
+                }
+                row = row.substring(0, row.length() - 1);
+                System.out.println(row);
             }
         }
     }
@@ -80,9 +104,10 @@ public class Graph {
      * @return distance between input locations, -1 if API call failed
      */
     private int getDistance(Coordinate loc1, Coordinate loc2) {
-        String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric" +
+        String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?" +
             "&origins=" + loc1.getLat() + "," + loc1.getLng() +
             "&destinations=" + loc2.getLat() + "," + loc2.getLng() +
+            "&mode=driving" +
             "&key=" + API_KEY;
 
         try {
@@ -110,53 +135,6 @@ public class Graph {
             e.printStackTrace();
         }
         return -1;
-    }
-
-    private int[][] getDistances() {
-        String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric";
-        
-        // construct apicall string
-        StringBuilder locs = new StringBuilder();
-        for (Entry<Integer, Cafe> e : vertexMap.entrySet()) {
-            Cafe c = e.getValue();
-            locs.append(c.getGeometry().getLocation().getLat() + "," + c.getGeometry().getLocation().getLng() + "|");
-        }
-        String locsString = loc1.getLat() + "," + loc1.getLng() + "|" + 
-            loc2.getLat() + "," + loc2.getLng() + "|" +
-            locs.toString().substring(0, locs.length() - 1);
-       
-        apiCall += "&origins=" + locsString + "&destinations=" + locsString + "&key=" + API_KEY;
-
-        int[][] res = new int[vertexMap.size()][vertexMap.size()];
-
-        // connect to url
-        try {
-            URL url = new URL(apiCall);
-            URLConnection connection = url.openConnection();
-            HttpURLConnection httpConnection = (HttpURLConnection) connection;
-            
-            if (httpConnection.getResponseCode() == 200) {
-                // Build json response string
-                BufferedReader br = new BufferedReader(new InputStreamReader(httpConnection.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) {
-                    sb.append(line+"\n");
-                }
-                br.close();
-
-                // Map json to Java object
-                Gson gson = new Gson();
-                MatrixResponse response = gson.fromJson(sb.toString(), MatrixResponse.class);
-                res = response.getData();
-                System.out.println(response.getStatus());;
-                
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-       return res;
     }
     
     /**

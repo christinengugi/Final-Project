@@ -42,7 +42,6 @@ public class MatrixResponse {
         return status;
     }
 
-
     public int[][] getData() {
         int[][] res = new int[rows.size()][rows.size()];
         for (int i = 0; i < rows.size(); i++) {
