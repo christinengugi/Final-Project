@@ -5,7 +5,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.List;
 import java.util.Map;
+
+import com.google.gson.Gson;
 
 public class Graph {
 
@@ -17,8 +20,9 @@ public class Graph {
     public Graph(Coordinate loc1, Coordinate loc2) {
         // Compute distance and midpoint b/w loc1 and loc2
         
+        
         // Get cafes within radius (distance/2) of midpoint
-        Coordinate mid = new Coordinate(26.272514, 50.195682);
+        Coordinate mid = Coordinate.mid(loc1, loc2);
         int radius = 15000;
         getCafes(mid, radius);
          
@@ -30,6 +34,7 @@ public class Graph {
     
     private void getCafes(Coordinate mid, int radius) {
         try {
+            // Cafe API call
             URL url = new URL(
                 "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + 
                 mid.getLat() + "," + mid.getLng() + 
@@ -48,8 +53,15 @@ public class Graph {
                     sb.append(line+"\n");
                 }
                 br.close();
-                System.out.println(sb.toString());
+
                 // map string to json obj
+                Gson gson = new Gson();
+                CafeResponse response = gson.fromJson(sb.toString(), CafeResponse.class);
+                List<Cafe> cafes = response.getResults();
+                for (Cafe c : cafes) {
+                    System.out.println(c.getName());
+                    System.out.println(c.getGeometry().getLocation().getLat());
+                }
             }
 
         } catch (Exception e) {
