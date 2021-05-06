@@ -8,12 +8,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import com.google.gson.Gson;
+
 import java.util.PriorityQueue;
 import java.util.Comparator;
 
 public class Graph {
 
-    private static final String API_KEY = "AIzaSyDbGKLgDehhTw5e74VYe3jvACTBS9GdrVI";
+    // API key
+    private String key;
 
     // Maps vertex indices to Cafe objects
     private Map<Integer, Cafe> vertexMap;
@@ -21,10 +23,16 @@ public class Graph {
     // Adjacency matrix representation
     private int[][] adjm;
 
+    // Number of input user locations 
+    private int numLocs;
+
+    // User locations
     private Coordinate loc1;
     private Coordinate loc2;
 
-    public Graph(Coordinate loc1, Coordinate loc2) {
+    public Graph(Coordinate loc1, Coordinate loc2, String key) {
+        this.key = key;
+        this.numLocs = 2;
         this.loc1 = loc1;
         this.loc2 = loc2;
 
@@ -34,67 +42,127 @@ public class Graph {
 
         // Get nearby cafes
         int radius = distance / 2;
-        this.vertexMap = getCafes(mid, radius);
+        this.vertexMap = new HashMap<>();
+        getCafes(mid, radius);
          
         // Get distances between cafes and create adjacency matrix 
-        this.adjm = new int[vertexMap.size() + 2][vertexMap.size() + 2];
+        this.adjm = new int[vertexMap.size() + numLocs][vertexMap.size() + numLocs];
         if (vertexMap.size() > 0) {
-            for (int i = 0; i < adjm.length; i++) {
-                for (int j = 0; j < adjm[0].length; j++) {
-                    if (i == j) {
-                        // no weight to same vertex
-                        adjm[i][j] = 0;
-                    } else if (adjm[i][j] == 0 && adjm[j][i] == 0) {
+            getDistances(); // 0 will be loc1, 1 will be loc2
 
-                        Coordinate locI;
-                        Coordinate locJ;
+            filterWeights(radius);
+            
+            // printAdjm();
+        }
+    }
 
-                        if (i == 0) {
-                            locI = loc1;
-                        } else if (i == 1) {
-                            locI = loc2;
-                        } else {
-                            Cafe cafeI = vertexMap.get(i);
-                            locI = new Coordinate(cafeI.getGeometry().getLocation().getLat(), cafeI.getGeometry().getLocation().getLng());
-                        }
-
-                        if (j == 0) {
-                            locJ = loc1;
-                        } else if (j == 1) {
-                            locJ = loc2;
-                        } else {
-                            Cafe cafeJ = vertexMap.get(j);
-                            locJ = new Coordinate(cafeJ.getGeometry().getLocation().getLat(), cafeJ.getGeometry().getLocation().getLng());
-                        }
-
-                        // distance between cafes
-                        int distanceIJ = getDistance(locI, locJ);
-                        adjm[i][j] = distanceIJ;
-                        adjm[j][i] = distanceIJ;
-                    }
-                }
+    /**
+     * Prints the adjacency matrix (debugging)
+     */
+    private void printAdjm() {
+        for (int i = 0; i < adjm.length; i++) {
+            String row = "";
+            for (int j = 0; j < adjm[0].length; j++) {
+                row += adjm[i][j] + ",";
             }
+            row = row.substring(0, row.length() - 1);
+            System.out.println(row);
+        }
+    }
 
-            // Filter
-            for (int i = 0; i < adjm.length; i++) {
-                for (int j = 0; j < adjm[0].length; j++) {
-                    int distanceIJ = adjm[i][j];
-                    if (distanceIJ >= radius) {
-                        adjm[i][j] = 0;
-                    }
-                }
-            }
+    /**
+     * Filters the weights of edges
+     * @param maxWeight the maximum allowed weight/distance between vertices
+     */
+    private void filterWeights(int maxWeight) {
 
-            // print for debugging
-            for (int i = 0; i < adjm.length; i++) {
-                String row = "";
-                for (int j = 0; j < adjm[0].length; j++) {
-                    row += adjm[i][j] + ",";
+        for (int i = 0; i < adjm.length; i++) {
+            for (int j = 0; j < adjm[0].length; j++) {
+
+                if (adjm[i][j] >= maxWeight) {
+                    adjm[i][j] = 0;
                 }
-                row = row.substring(0, row.length() - 1);
-                System.out.println(row);
             }
         }
+    }
+
+    /**
+     * 
+     * @param addr1
+     * @param addr2
+     */
+    private Coordinate getCoordinates(String addr1) {
+        // Construct url for api call       
+        addr1 = addr1.replaceAll(" ", "+");
+        String apiCall = "https://maps.googleapis.com/maps/api/geocode/json?" + 
+            "address=" + addr1 + "&key=" + key;
+
+        // Connecting to it and mapping it to java class
+        try {
+            URL url = new URL(apiCall);
+            URLConnection connection = url.openConnection();
+            HttpURLConnection httpConnection = (HttpURLConnection) connection;
+
+            if (httpConnection.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(httpConnection.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line+"\n");
+                }
+                br.close();
+
+                Gson gson = new Gson();
+                GeocodeResponse response = gson.fromJson(sb.toString(), GeocodeResponse.class);
+
+                // Latitude, Longitude (doubles)
+                return response.getLocationData()[0];
+                 
+            }
+ 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Latitude, Longitude (doubles)
+        return null;
+    }
+
+    public String getAddress(Coordinate loc) {
+
+        // Construct url for api call       
+        String apiCall = "https://maps.googleapis.com/maps/api/geocode/json?" + 
+            "latlng=" + loc.getLat() + "," + loc.getLng() + "&key=" + key;
+
+        // Connecting to it and mapping it to java class
+        try {
+            URL url = new URL(apiCall);
+            URLConnection connection = url.openConnection();
+            HttpURLConnection httpConnection = (HttpURLConnection) connection;
+
+            if (httpConnection.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(httpConnection.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line+"\n");
+                }
+                br.close();
+
+                Gson gson = new Gson();
+                GeocodeResponse response = gson.fromJson(sb.toString(), GeocodeResponse.class);
+
+                return response.getAddressData()[0];
+                 
+            }
+ 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Latitude, Longitude (doubles)
+        return null;
+    
     }
 
     /**
@@ -107,8 +175,7 @@ public class Graph {
         String apiCall = "https://maps.googleapis.com/maps/api/distancematrix/json?" +
             "&origins=" + loc1.getLat() + "," + loc1.getLng() +
             "&destinations=" + loc2.getLat() + "," + loc2.getLng() +
-            "&mode=driving" +
-            "&key=" + API_KEY;
+            "&key=" + key;
 
         try {
             URL url = new URL(apiCall);
@@ -127,14 +194,55 @@ public class Graph {
                 // Map json to Java object
                 Gson gson = new Gson();
                 MatrixResponse response = gson.fromJson(sb.toString(), MatrixResponse.class);
-
                 int[][] res = response.getData();
-                return res[0][0];
+                if (res.length > 0 && res[0].length > 0) {
+                    return res[0][0];
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+        
         return -1;
+    }
+
+    /**
+     * Populates the adjacency matrix with edge weights (distances) between every vertex
+     */
+    private void getDistances() {
+
+        for (int i = 0; i < adjm.length; i++) {
+            for (int j = 0; j < adjm[i].length; j++) {
+
+                if (i != j && adjm[i][j] == 0 && adjm[j][i] == 0) {
+
+                    Coordinate locI;
+                    Coordinate locJ;
+
+                    if (i <= 1) {
+                        locI = (i == 0) ? loc1 : loc2;
+                    } else {
+                        Cafe cafe = vertexMap.get(i);
+                        Cafe.Location cafeLoc = cafe.getGeometry().getLocation();
+                        locI = new Coordinate(cafeLoc.getLat(), cafeLoc.getLng());
+                    }
+
+                    if (j <= 1) {
+                        locJ = (j == 0) ? loc1 : loc2;
+                    } else {
+                        Cafe cafe = vertexMap.get(j);
+                        Cafe.Location cafeLoc = cafe.getGeometry().getLocation();
+                        locJ = new Coordinate(cafeLoc.getLat(), cafeLoc.getLng());
+                    }
+
+                    // Distance between cafes
+                    int distanceIJ = getDistance(locI, locJ);
+                    adjm[i][j] = distanceIJ;
+                    adjm[j][i] = distanceIJ;
+                }
+            }
+        }
+        
     }
     
     /**
@@ -142,8 +250,7 @@ public class Graph {
      * @param loc the input location 
      * @param radius the input radius
      */
-    private Map<Integer, Cafe> getCafes(Coordinate loc, int radius) {
-        Map<Integer, Cafe> res = new HashMap<>();
+    private void getCafes(Coordinate loc, int radius) {
 
         try {
             // Cafes API call
@@ -151,7 +258,7 @@ public class Graph {
                 "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + 
                 loc.getLat() + "," + loc.getLng() + 
                 "&radius=" + radius + 
-                "&types=cafe&key=" + API_KEY);
+                "&types=cafe&key=" + key);
             URLConnection connection = url.openConnection();
             HttpURLConnection httpConnection = (HttpURLConnection) connection;
             
@@ -169,11 +276,13 @@ public class Graph {
                 Gson gson = new Gson();
                 CafeResponse response = gson.fromJson(sb.toString(), CafeResponse.class);
                 List<Cafe> cafes = response.getResults();
+                
+                // Filter cafes
+                filterRating(cafes, 3.0);
 
                 // Map vertex indices to cafes
-                int offset = 2; // user input of 2 locations
                 for (int i = 0; i < cafes.size(); i++) {
-                    res.put(i + offset, cafes.get(i));
+                    vertexMap.put(i + numLocs, cafes.get(i));
                 }
             }
 
@@ -181,9 +290,17 @@ public class Graph {
             e.printStackTrace();
         }
 
-        return res;
     } 
 
+    private void filterRating(List<Cafe> cafes, double rating) {
+        for (int i = 0; i < cafes.size(); i++) {
+            if (cafes.get(i).getRating() < rating) {
+                cafes.remove(i);
+            }
+
+        }
+    }
+    
      /**
      * Dijkstra's algorithm
      * @param s the input source vertex

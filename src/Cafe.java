@@ -37,4 +37,8 @@ public class Cafe {
         return geometry;
     }
 
+    public double getRating() {
+        return rating;
+    }
+
 }
