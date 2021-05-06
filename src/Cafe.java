@@ -1,3 +1,6 @@
+/**
+ * Maps the location json objects returned by Places Nearby API call
+ */
 public class Cafe {
 
     public class Location {

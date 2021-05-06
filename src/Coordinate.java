@@ -1,3 +1,6 @@
+/**
+ * Coordinate class representing a location's latitude and longitude
+ */
 public class Coordinate {
     private double lat;
     private double lng;
@@ -16,10 +19,11 @@ public class Coordinate {
     }
 
     /**
-     * Computes the midpoint between two coordinates (source: Stackoverflow)
-     * @param loc1
-     * @param loc2
-     * @return
+     * Computes the midpoint between two coordinates
+     * Uses the Haversine formula to calculate the great-circle distance
+     * @param loc1 the first input location as a Coordinate object
+     * @param loc2 the second input location as a Coordinate object
+     * @return the midpoint as a Coordinate object 
      */
     public static Coordinate mid(Coordinate loc1, Coordinate loc2) {
 

@@ -1,5 +1,8 @@
 import java.util.List;
 
+/**
+ * Maps the Distance Matrix Response API
+ */
 public class MatrixResponse {
 
     public class Distance {
@@ -42,6 +45,10 @@ public class MatrixResponse {
         return status;
     }
 
+    /**
+     * 
+     * @return the distances between origins and destinations as a matrix
+     */
     public int[][] getData() {
         int[][] res = new int[rows.size()][rows.size()];
         for (int i = 0; i < rows.size(); i++) {

@@ -1,5 +1,8 @@
 import java.util.List;
 
+/**
+ * Maps the Geocode API call
+ */
 public class GeocodeResponse {
 
     public class Location {
@@ -39,6 +42,10 @@ public class GeocodeResponse {
         return results;
     }
 
+    /**
+     * 
+     * @return the addresses of results as an array of strings
+     */
     public String[] getAddressData() {
         String[] res = new String[results.size()];
 
@@ -50,6 +57,10 @@ public class GeocodeResponse {
         return res;
     }
 
+    /**
+     * 
+     * @return the locations of results as an array of Coordinate objects
+     */
     public Coordinate[] getLocationData() {
         Coordinate[] res = new Coordinate[results.size()];
 
